@@ -1,0 +1,10 @@
+project: autonomous-release-platform
+version: "1.0"
+environments:
+  - dev
+  - qa
+  - staging
+  - production
+settings:
+  auto_deploy: true
+  require_approval: false
