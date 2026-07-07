@@ -1,0 +1,25 @@
+services:
+  app-blue:
+    build: ../app
+    container_name: app-blue
+    environment:
+      - VERSION=blue
+      - PORT=3000
+
+  app-green:
+    build: ../app
+    container_name: app-green
+    environment:
+      - VERSION=green
+      - PORT=3000
+
+  nginx:
+    image: nginx:alpine
+    container_name: bg-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-canary.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app-blue
+      - app-green
