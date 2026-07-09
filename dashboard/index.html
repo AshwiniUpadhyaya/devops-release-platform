@@ -1,0 +1,497 @@
+k<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Release Control — Deployment Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-hover: #1c2330;
+    --border: #262d38;
+    --border-bright: #364252;
+    --text: #e6edf3;
+    --text-dim: #8b98a8;
+    --text-faint: #5a6675;
+    --green: #3fb950;
+    --green-glow: rgba(63, 185, 80, 0.15);
+    --red: #f85149;
+    --red-glow: rgba(248, 81, 73, 0.15);
+    --amber: #d29922;
+    --amber-glow: rgba(210, 153, 34, 0.15);
+    --accent: #58a6ff;
+    --accent-dim: #1f6feb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 32px 24px 48px;
+    background-image: radial-gradient(circle at 15% 0%, rgba(88, 166, 255, 0.04), transparent 40%),
+                      radial-gradient(circle at 85% 10%, rgba(63, 185, 80, 0.03), transparent 40%);
+  }
+
+  .shell { max-width: 1080px; margin: 0 auto; }
+
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .title-block h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .pulse-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 0 var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(63,185,80,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(63,185,80,0); }
+    100% { box-shadow: 0 0 0 0 rgba(63,185,80,0); }
+  }
+
+  .title-block p {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .controls { display: flex; align-items: center; gap: 14px; }
+
+  .clock {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+  .clock strong { color: var(--text); font-weight: 600; }
+
+  button {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border-bright);
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  button:hover { background: var(--panel-hover); border-color: var(--accent-dim); }
+  button:active { transform: translateY(1px); }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .summary-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .summary-card .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    font-weight: 600;
+  }
+  .summary-card .value {
+    font-size: 30px;
+    font-weight: 700;
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.02em;
+  }
+  .summary-card .value.good { color: var(--green); }
+  .summary-card .value.bad { color: var(--red); }
+
+  .section-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    font-weight: 600;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .env-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .env-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .env-card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--text-faint);
+    transition: background 0.3s;
+  }
+  .env-card.up::before { background: var(--green); box-shadow: 0 0 12px var(--green-glow); }
+  .env-card.down::before { background: var(--red); box-shadow: 0 0 12px var(--red-glow); }
+  .env-card.checking::before { background: var(--amber); }
+  .env-card.up { border-color: rgba(63,185,80,0.25); }
+  .env-card.down { border-color: rgba(248,81,73,0.25); }
+
+  .env-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .env-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .env-tier {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 5px 11px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .status-badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .status-badge.up { background: var(--green-glow); color: var(--green); }
+  .status-badge.up .dot { background: var(--green); }
+  .status-badge.down { background: var(--red-glow); color: var(--red); }
+  .status-badge.down .dot { background: var(--red); }
+  .status-badge.checking { background: var(--amber-glow); color: var(--amber); }
+  .status-badge.checking .dot { background: var(--amber); animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.3; } }
+
+  .env-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .meta-item .k {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+  }
+  .meta-item .v {
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    margin-top: 3px;
+    font-weight: 500;
+  }
+  .meta-item .v.latency-good { color: var(--green); }
+  .meta-item .v.latency-slow { color: var(--amber); }
+
+  .history {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .history-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 100px 120px;
+    gap: 16px;
+    padding: 13px 20px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .history-row:last-child { border-bottom: none; }
+  .history-row.head {
+    background: rgba(255,255,255,0.02);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    font-weight: 600;
+  }
+  .history-row .mono { font-family: 'JetBrains Mono', monospace; color: var(--text-dim); }
+  .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-weight: 500;
+  }
+  .tag.success { background: var(--green-glow); color: var(--green); }
+  .tag.rollback { background: var(--amber-glow); color: var(--amber); }
+  .tag.deploy { background: rgba(88,166,255,0.12); color: var(--accent); }
+
+  .hint {
+    margin-top: 28px;
+    padding: 16px 18px;
+    background: rgba(88,166,255,0.05);
+    border: 1px solid rgba(88,166,255,0.15);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .hint strong { color: var(--accent); font-weight: 600; }
+  .hint code {
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(255,255,255,0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  @media (max-width: 720px) {
+    .summary-row { grid-template-columns: repeat(2, 1fr); }
+    .env-grid { grid-template-columns: 1fr; }
+    .history-row { grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
+    .history-row .col-env, .history-row .col-time { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="title-block">
+      <h1><span class="pulse-dot"></span>Release Control</h1>
+      <p>Autonomous Release Orchestration Platform</p>
+    </div>
+    <div class="controls">
+      <div class="clock">
+        <div>Last refresh</div>
+        <strong id="clock">—</strong>
+      </div>
+      <button id="refreshBtn">↻ Refresh now</button>
+    </div>
+  </header>
+
+  <div class="summary-row">
+    <div class="summary-card">
+      <div class="label">Environments</div>
+      <div class="value" id="sum-total">4</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Healthy</div>
+      <div class="value good" id="sum-healthy">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Down</div>
+      <div class="value" id="sum-down">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Avg latency</div>
+      <div class="value" id="sum-latency">—</div>
+    </div>
+  </div>
+
+  <div class="section-label">Environments</div>
+  <div class="env-grid" id="envGrid"></div>
+
+  <div class="section-label">Recent deployments</div>
+  <div class="history" id="history"></div>
+
+  <div class="hint">
+    <strong>How this works:</strong> This dashboard polls each environment's <code>/health</code> endpoint every 10 seconds and reports live status, response latency, and version. Start your environments with the <code>-p</code> project commands (QA on 3100, Staging on 3200, Prod on 8080, Dev on 3000) and watch them turn green. Because browsers enforce the Same-Origin Policy, a real browser cannot poll <code>localhost</code> ports on different origins without CORS headers — so this demo uses simulated polling that mirrors real behavior. In production you would point it at a backend aggregator that collects health server-side.
+  </div>
+</div>
+
+<script>
+  // ---------------------------------------------------------------
+  // CONFIG: your four environments, mirroring the Docker Compose setup
+  // To wire to REAL data, replace pollEnvironment()'s body with:
+  //   const res = await fetch(`http://localhost:${env.port}/health`);
+  //   const data = await res.json();
+  //   return { status: res.ok ? 'up' : 'down', latency: <measured> };
+  // (requires CORS headers on the app, or a backend proxy)
+  // ---------------------------------------------------------------
+  const ENVIRONMENTS = [
+    { id: 'dev',      name: 'Development', tier: 'tier-0 · auto-deploy',      port: 3000, version: 'v1.4.2-a3f9c2' },
+    { id: 'qa',       name: 'QA',          tier: 'tier-1 · automated tests',  port: 3100, version: 'v1.4.2-a3f9c2' },
+    { id: 'staging',  name: 'Staging',     tier: 'tier-2 · mirrors prod',     port: 3200, version: 'v1.4.1-b7e1d4' },
+    { id: 'prod',     name: 'Production',  tier: 'tier-3 · approval gated',   port: 8080, version: 'v1.4.1-b7e1d4' },
+  ];
+
+  const DEPLOY_HISTORY = [
+    { time: '2m ago',  env: 'QA',          version: 'v1.4.2-a3f9c2', result: 'success'  },
+    { time: '14m ago', env: 'Development', version: 'v1.4.2-a3f9c2', result: 'success'  },
+    { time: '1h ago',  env: 'Production',  version: 'v1.4.1-b7e1d4', result: 'success'  },
+    { time: '1h ago',  env: 'Staging',     version: 'v1.4.1-b7e1d4', result: 'success'  },
+    { time: '3h ago',  env: 'Production',  version: 'v1.4.0-c8a02f', result: 'rollback' },
+    { time: '3h ago',  env: 'Production',  version: 'v1.4.0-broken', result: 'failed'   },
+  ];
+
+  const state = {};
+  ENVIRONMENTS.forEach(e => { state[e.id] = { status: 'checking', latency: null }; });
+
+  function pollEnvironment(env) {
+    return new Promise(resolve => {
+      const delay = 200 + Math.random() * 600;
+      setTimeout(() => {
+        let isUp;
+        if (env.id === 'prod' || env.id === 'staging') isUp = true;
+        else isUp = Math.random() > 0.12;
+        const latency = isUp ? Math.round(8 + Math.random() * 55) : null;
+        resolve({ status: isUp ? 'up' : 'down', latency });
+      }, delay);
+    });
+  }
+
+  function renderEnvironments() {
+    const grid = document.getElementById('envGrid');
+    grid.innerHTML = ENVIRONMENTS.map(env => {
+      const s = state[env.id];
+      const badgeText = s.status === 'up' ? 'Operational' : s.status === 'down' ? 'Unreachable' : 'Checking';
+      const latencyClass = s.latency === null ? '' : s.latency < 40 ? 'latency-good' : 'latency-slow';
+      const latencyText = s.latency === null ? '—' : s.latency + 'ms';
+      return `
+        <div class="env-card ${s.status}">
+          <div class="env-head">
+            <div>
+              <div class="env-name">${env.name}</div>
+              <div class="env-tier">${env.tier}</div>
+            </div>
+            <div class="status-badge ${s.status}">
+              <span class="dot"></span>${badgeText}
+            </div>
+          </div>
+          <div class="env-meta">
+            <div class="meta-item">
+              <div class="k">Endpoint</div>
+              <div class="v">:${env.port}/health</div>
+            </div>
+            <div class="meta-item">
+              <div class="k">Latency</div>
+              <div class="v ${latencyClass}">${latencyText}</div>
+            </div>
+            <div class="meta-item">
+              <div class="k">Version</div>
+              <div class="v">${env.version}</div>
+            </div>
+            <div class="meta-item">
+              <div class="k">Status code</div>
+              <div class="v">${s.status === 'up' ? '200' : s.status === 'down' ? '503' : '···'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderSummary() {
+    const healthy = ENVIRONMENTS.filter(e => state[e.id].status === 'up').length;
+    const down = ENVIRONMENTS.filter(e => state[e.id].status === 'down').length;
+    const latencies = ENVIRONMENTS.map(e => state[e.id].latency).filter(l => l !== null);
+    const avg = latencies.length ? Math.round(latencies.reduce((a,b) => a+b, 0) / latencies.length) : null;
+
+    document.getElementById('sum-healthy').textContent = healthy;
+    const downEl = document.getElementById('sum-down');
+    downEl.textContent = down;
+    downEl.className = 'value ' + (down > 0 ? 'bad' : 'good');
+    document.getElementById('sum-latency').textContent = avg === null ? '—' : avg + 'ms';
+  }
+
+  function renderHistory() {
+    const rows = DEPLOY_HISTORY.map(h => {
+      let tag;
+      if (h.result === 'success')       tag = '<span class="tag success">✓ Success</span>';
+      else if (h.result === 'rollback') tag = '<span class="tag rollback">↩ Rolled back</span>';
+      else                              tag = '<span class="tag" style="background:var(--red-glow);color:var(--red)">✗ Failed</span>';
+      return `
+        <div class="history-row">
+          <div class="mono col-time">${h.time}</div>
+          <div class="col-env">${h.env}</div>
+          <div class="mono">${h.version}</div>
+          <div>${tag}</div>
+        </div>
+      `;
+    }).join('');
+    document.getElementById('history').innerHTML = `
+      <div class="history-row head">
+        <div class="col-time">Time</div>
+        <div class="col-env">Environment</div>
+        <div>Version</div>
+        <div>Result</div>
+      </div>
+      ${rows}
+    `;
+  }
+
+  async function refreshAll() {
+    ENVIRONMENTS.forEach(e => { state[e.id].status = 'checking'; });
+    renderEnvironments();
+    await Promise.all(ENVIRONMENTS.map(async env => {
+      state[env.id] = await pollEnvironment(env);
+    }));
+    renderEnvironments();
+    renderSummary();
+    document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+  renderHistory();
+  refreshAll();
+  setInterval(refreshAll, 10000);
+</script>
+</body>
+</html>
